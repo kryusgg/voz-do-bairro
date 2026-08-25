@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voz do Bairro - Itajaí</title>
+    <!-- Leaflet CSS para o Mapa -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f8; }
+        header { background-color: #1f2937; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        header h1 { font-size: 1.2rem; }
+        .btn-novo { background-color: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-novo:hover { background-color: #059669; }
+        
+        /* Barra de Filtros */
+        .barra-filtros { background-color: #ffffff; padding: 10px 20px; display: flex; gap: 10px; overflow-x: auto; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        .btn-filtro { background-color: #e5e7eb; color: #374151; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s; }
+        .btn-filtro:hover { background-color: #d1d5db; }
+        .btn-filtro.ativo { background-color: #3b82f6; color: white; }
+
+        #map { flex: 1; width: 100%; z-index: 1; }
+        
+        /* Modal de Cadastro */
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .modal-content h2 { margin-bottom: 15px; font-size: 1.1rem; color: #1f2937; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #4b5563; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+        .btn-cancelar { background-color: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-salvar { background-color: #3b82f6; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+
+        /* Estilo do Popup do Mapa */
+        .popup-content h3 { font-size: 1rem; margin-bottom: 5px; color: #1f2937; }
+        .popup-content p { font-size: 0.85rem; color: #4b5563; margin-bottom: 8px; }
+        .btn-apoiar { background-color: #10b981; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; width: 100%; font-weight: bold; }
+        .btn-apoiar:hover { background-color: #059669; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Voz do Bairro - Itajaí (SC)</h1>
+        <button class="btn-novo" onclick="abrirModal()">+ Relatar Problema</button>
+    </header>
+
+    <!-- Barra de Filtros -->
+    <div class="barra-filtros" id="container-filtros">
+        <button class="btn-filtro ativo" onclick="filtrarCategoria('Todos', this)">Todos</button>
+        <button class="btn-filtro" onclick="filtrarCategoria('Iluminação Pública', this)">💡 Iluminação</button>
+        <button class="btn-filtro" onclick="filtrarCategoria('Pavimentação', this)">🚧 Pavimentação</button>
+        <button class="btn-filtro" onclick="filtrarCategoria('Limpeza Urbana', this)">🗑️ Limpeza</button>
+        <button class="btn-filtro" onclick="filtrarCategoria('Saneamento', this)">💧 Saneamento</button>
+    </div>
+
+    <!-- Div do Mapa -->
+    <div id="map"></div>
+
+    <!-- Modal Novo Alerta -->
+    <div id="modal">
+        <div class="modal-content">
+            <h2>Novo Registro de Ocorrência</h2>
+            <div class="form-group">
+                <label>Categoria do Problema:</label>
+                <select id="categoria">
+                    <option value="Iluminação Pública">Iluminação Pública (Poste Apagado)</option>
+                    <option value="Pavimentação">Pavimentação (Buraco na Pista)</option>
+                    <option value="Limpeza Urbana">Limpeza Urbana (Lixo Irregular)</option>
+                    <option value="Saneamento">Saneamento (Bueiro Entupido)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Endereço ou Local:</label>
+                <input type="text" id="endereco" placeholder="Ex: Rua Hercílio Luz, Centro">
+            </div>
+            <div class="form-group">
+                <label>Breve Descrição:</label>
+                <textarea id="descricao" rows="3" placeholder="Ex: Lâmpada queimada há mais de uma semana..."></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                <button class="btn-salvar" onclick="salvarOcorrencia()">Publicar Alerta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([-26.9045, -48.6583], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let ocorrencias = [
+            { lat: -26.9070, lng: -48.6550, cat: "Pavimentação", end: "Rua Uruguai, Centro", desc: "Buraco grande próximo à faixa de pedestres.", apoios: 12 },
+            { lat: -26.9015, lng: -48.6620, cat: "Iluminação Pública", end: "Av. Sete de Setembro", desc: "Poste com luz piscando há dias.", apoios: 7 },
+            { lat: -26.9120, lng: -48.6500, cat: "Limpeza Urbana", end: "Rua Camboriú, Fazenda", desc: "Acúmulo de lixo irregular na calçada.", apoios: 4 }
+        ];
+
+        let markers = [];
+        let categoriaAtual = 'Todos';
+
+        function renderizarMarcadores() {
+            // Remove marcadores antigos
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            // Filtra o array baseado na categoria selecionada
+            let ocorrenciasFiltradas = ocorrencias.filter(oc => categoriaAtual === 'Todos' || oc.cat === categoriaAtual);
+
+            ocorrenciasFiltradas.forEach((oc, indexOriginal) => {
+                let indexReal = ocorrencias.indexOf(oc); // Mantém a referência do index original para o apoio
+                let htmlPopup = `
+                    <div class="popup-content">
+                        <h3>${oc.cat}</h3>
+                        <p><strong>Local:</strong> ${oc.end}</p>
+                        <p>${oc.desc}</p>
+                        <p><strong>Apoios da Vizinhança:</strong> <span id="contador-${indexReal}">${oc.apoios}</span></p>
+                        <button class="btn-apoiar" onclick="apoiar(${indexReal})">👍 Apoiar (+1)</button>
+                    </div>
+                `;
+                let marker = L.marker([oc.lat, oc.lng]).addTo(map).bindPopup(htmlPopup);
+                markers.push(marker);
+            });
+        }
+
+        function filtrarCategoria(categoria, elementoBotao) {
+            categoriaAtual = categoria;
+            
+            // Muda o visual do botão ativo
+            const botoes = document.querySelectorAll('.btn-filtro');
+            botoes.forEach(btn => btn.classList.remove('ativo'));
+            elementoBotao.classList.add('ativo');
+
+            renderizarMarcadores();
+        }
+
+        renderizarMarcadores();
+
+        function apoiar(index) {
+            ocorrencias[index].apoios++;
+            document.getElementById(`contador-${index}`).innerText = ocorrencias[index].apoios;
+        }
+
+        function abrirModal() {
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function salvarOcorrencia() {
+            const cat = document.getElementById('categoria').value;
+            const end = document.getElementById('endereco').value || 'Localização no Mapa';
+            const desc = document.getElementById('descricao').value;
+
+            if (!desc) {
+                alert('Por favor, preencha a descrição do problema.');
+                return;
+            }
+
+            const novaLat = -26.9045 + (Math.random() - 0.5) * 0.02;
+            const novaLng = -48.6583 + (Math.random() - 0.5) * 0.02;
+
+            ocorrencias.push({ lat: novaLat, lng: novaLng, cat: cat, end: end, desc: desc, apoios: 1 });
+            renderizarMarcadores();
+            fecharModal();
+
+            document.getElementById('descricao').value = '';
+            document.getElementById('endereco').value = '';
+            
+            // Força o filtro voltar para "Todos" ao cadastrar algo novo para o usuário poder ver
+            document.querySelector('.btn-filtro').click();
+            alert('Alerta publicado com sucesso no mapa da comunidade!');
+        }
+    </script>
+</body>
+</html>
