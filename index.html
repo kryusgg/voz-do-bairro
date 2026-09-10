@@ -65,9 +65,39 @@
         </div>
     </div>
 
-    <!-- Importando o JS do Leaflet -->
+    <!-- Importando o Leaflet (Mapa) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Nosso script com a lógica -->
+    
+    <!-- Importando o Firebase SDK (Versão Modular via CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Configuração do seu Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDscqk9uFIFZ-9Z27Ci0pxoifLD8Gj5h3c",
+            authDomain: "voz-do-bairro-58727.firebaseapp.com",
+            projectId: "voz-do-bairro-58727",
+            storageBucket: "voz-do-bairro-58727.firebasestorage.app",
+            messagingSenderId: "62321635310",
+            appId: "1:62321635310:web:e4a6a91a0da3215d3a28ff"
+        };
+
+        // Inicializa o Firebase e o Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Deixamos o banco global para o script.js usar
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.updateDoc = updateDoc;
+        window.doc = doc;
+        window.increment = increment;
+    </script>
+
+    <!-- Nosso script principal com a lógica do mapa -->
     <script src="script.js"></script>
 </body>
 </html>
