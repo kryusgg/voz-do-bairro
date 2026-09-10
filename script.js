@@ -1,8 +1,6 @@
-// Importações diretas do Firebase SDK via CDN oficial
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyDscqk9uFIFZ-9Z27Ci0pxoifLD8Gj5h3c",
     authDomain: "voz-do-bairro-58727.firebaseapp.com",
@@ -12,23 +10,23 @@ const firebaseConfig = {
     appId: "1:62321635310:web:e4a6a91a0da3215d3a28ff"
 };
 
-// Inicializa o Firebase e o Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Inicializa o mapa focado na região central de Itajaí
 const map = L.map('mapa-container').setView([-26.9069, -48.6617], 14);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    attribution: '&copy; OpenStreetMap'
 }).addTo(map);
 
 let marcadoresLayer = L.layerGroup().addTo(map);
 let ocorrencias = [];
-// Cria um pino especial e arrastável para o usuário marcar o local
-let pinoRegistro = L.marker([-26.9069, -48.6617], { draggable: true }).addTo(map);
-pinoRegistro.bindPopup("📍 <b>Arraste-me</b> para o local exato do problema!").openPopup();
-// ================= Carregar Ocorrências do Firebase =================
+
+// Variáveis de controle do pino arrastável
+let pinoRegistro = null;
+let dadosFormulario = {}; 
+const painelConfirmacao = document.getElementById('painel-confirmacao');
+
 async function carregarOcorrencias(filtro = 'todos') {
     marcadoresLayer.clearLayers();
     ocorrencias = [];
@@ -55,26 +53,29 @@ async function carregarOcorrencias(filtro = 'todos') {
     }
 }
 
-// ================= Desenhar os Pinos no Mapa =================
 function desenharMarcadoresNoMapa(filtro) {
     marcadoresLayer.clearLayers();
 
     ocorrencias.forEach(oco => {
         if (filtro === 'todos' || oco.categoria === filtro) {
-            const marker = L.marker([oco.lat, oco.lng]);
+            
+            // Jitter (Desvio) para evitar sobreposição exata de pinos resolvidos na mesma rua
+            let latComDesvio = oco.lat + ((Math.random() - 0.5) * 0.0001);
+            let lngComDesvio = oco.lng + ((Math.random() - 0.5) * 0.0001);
+
+            const marker = L.marker([latComDesvio, lngComDesvio]);
             
             const popupContent = `
                 <div class="popup-apoio">
                     <h3>${oco.categoria.toUpperCase()}</h3>
                     <p><strong>Local:</strong> ${oco.endereco}</p>
                     <p>${oco.desc}</p>
-                    <p><strong>Apoios da vizinhança: <span id="contador-${oco.id}">${oco.apoios}</span></strong></p>
+                    <p><strong>Apoios: <span id="contador-${oco.id}">${oco.apoios}</span></strong></p>
                     <button class="btn-apoio" id="btn-votar-${oco.id}">👍 Apoiar (+1)</button>
                 </div>
             `;
             
             marker.bindPopup(popupContent);
-            
             marker.on('popupopen', () => {
                 const btnVotar = document.getElementById(`btn-votar-${oco.id}`);
                 if (btnVotar) {
@@ -87,13 +88,10 @@ function desenharMarcadoresNoMapa(filtro) {
     });
 }
 
-// ================= Sistema de Votos (+1 Apoio) =================
-async function adicionarApoio(id) {
+window.adicionarApoio = async function(id) {
     try {
         const docRef = doc(db, "ocorrencias", id);
-        await updateDoc(docRef, {
-            apoios: increment(1)
-        });
+        await updateDoc(docRef, { apoios: increment(1) });
 
         const ocorrencia = ocorrencias.find(o => o.id === id);
         if (ocorrencia) {
@@ -105,11 +103,9 @@ async function adicionarApoio(id) {
         }
     } catch (error) {
         console.error("Erro ao registrar apoio:", error);
-        alert("Erro ao registrar apoio.");
     }
-}
+};
 
-// ================= Filtros =================
 const botoesFiltro = document.querySelectorAll('.btn-filtro');
 botoesFiltro.forEach(botao => {
     botao.addEventListener('click', (e) => {
@@ -120,7 +116,6 @@ botoesFiltro.forEach(botao => {
     });
 });
 
-// ================= Formulário =================
 const modal = document.getElementById('modal-registro');
 const btnNovo = document.getElementById('btn-novo-alerta');
 const btnCancelar = document.getElementById('btn-cancelar');
@@ -132,54 +127,108 @@ btnCancelar.addEventListener('click', () => {
     form.reset();
 });
 
+// PASSO 1: Submeter o Formulário, buscar a rua e mostrar o pino arrastável
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const categoria = document.getElementById('categoria').value;
-    const endereco = document.getElementById('endereco').value;
-    const numero = document.getElementById('numero').value;
-    const descricao = document.getElementById('descricao').value;
-    const enderecoCompleto = `${endereco}, ${numero}`;
+    dadosFormulario = {
+        categoria: document.getElementById('categoria').value,
+        endereco: document.getElementById('endereco').value,
+        numero: document.getElementById('numero').value,
+        descricao: document.getElementById('descricao').value,
+        enderecoCompleto: `${document.getElementById('endereco').value}, ${document.getElementById('numero').value}`
+    };
     
     const btnSalvar = document.getElementById('btn-salvar');
-    const textoOriginal = btnSalvar.innerText;
-    
-    btnSalvar.innerText = "Salvando na Nuvem...";
+    btnSalvar.innerText = "Buscando...";
     btnSalvar.disabled = true;
 
     try {
-        // PEGA AS COORDENADAS EXATAS DO PINO ARRASTÁVEL!
-        const lat = pinoRegistro.getLatLng().lat;
-        const lng = pinoRegistro.getLatLng().lng;
+        // Busca apenas a rua no OpenStreetMap para não dar erro
+        const query = encodeURIComponent(`${dadosFormulario.endereco}, Itajaí, SC, Brasil`);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+        const data = await response.json();
 
-        // Salva direto no Firebase com a precisão visual
+        let lat = -26.9069;
+        let lng = -48.6617;
+
+        if (data.length > 0) {
+            lat = parseFloat(data[0].lat);
+            lng = parseFloat(data[0].lon);
+        } else {
+            alert("Rua não encontrada automaticamente. Arraste o pino até o local correto no mapa.");
+        }
+
+        // Esconde o modal de formulário
+        modal.classList.add('oculta');
+        
+        // Exibe o painel flutuante de confirmação
+        painelConfirmacao.classList.remove('oculta');
+        
+        // Centraliza o mapa
+        map.setView([lat, lng], 16);
+
+        // Se já existir um pino de registro, remove antes de criar outro
+        if (pinoRegistro) map.removeLayer(pinoRegistro);
+        
+        // Cria o pino arrastável
+        pinoRegistro = L.marker([lat, lng], { draggable: true }).addTo(map);
+        pinoRegistro.bindPopup("<b>Arraste-me</b> para a frente da sua casa ou do problema!").openPopup();
+
+    } catch (error) {
+        console.error("Erro na busca:", error);
+    } finally {
+        btnSalvar.innerText = "Avançar para o Mapa 🗺️";
+        btnSalvar.disabled = false;
+    }
+});
+
+// PASSO 2: Confirmar Local Exato e Salvar no Firebase
+document.getElementById('btn-confirmar-local').addEventListener('click', async () => {
+    const btnConfirma = document.getElementById('btn-confirmar-local');
+    btnConfirma.innerText = "Salvando na Nuvem...";
+    btnConfirma.disabled = true;
+
+    // Pega a coordenada fina exata de onde o usuário soltou o pino
+    const latExata = pinoRegistro.getLatLng().lat;
+    const lngExata = pinoRegistro.getLatLng().lng;
+
+    try {
         await addDoc(collection(db, "ocorrencias"), {
-            categoria: categoria,
-            endereco: enderecoCompleto,
-            desc: descricao,
-            lat: lat,
-            lng: lng,
+            categoria: dadosFormulario.categoria,
+            endereco: dadosFormulario.enderecoCompleto,
+            desc: dadosFormulario.descricao,
+            lat: latExata,
+            lng: lngExata,
             apoios: 0,
             criadoEm: new Date()
         });
 
-        modal.classList.add('oculta');
+        alert('Problema registrado com sucesso! Muito obrigado.');
+        
+        // Reseta tudo e limpa a tela
+        painelConfirmacao.classList.add('oculta');
+        map.removeLayer(pinoRegistro);
+        pinoRegistro = null;
         form.reset();
-        alert('Alerta publicado com sucesso!');
 
         const filtroAtivo = document.querySelector('.btn-filtro.active').getAttribute('data-categoria');
         carregarOcorrencias(filtroAtivo);
-        
-        // Centraliza a tela onde o problema foi salvo
-        map.setView([lat, lng], 17);
 
-    } catch (error) {
-        console.error("Erro ao salvar:", error);
-        alert('Erro ao salvar no banco.');
+    } catch(e) {
+        console.error(e);
+        alert("Erro ao salvar no banco.");
     } finally {
-        btnSalvar.innerText = textoOriginal;
-        btnSalvar.disabled = false;
+        btnConfirma.innerText = "✅ Confirmar";
+        btnConfirma.disabled = false;
     }
 });
-// Inicializa a aplicação
+
+// Botão Cancelar a ação do Pino
+document.getElementById('btn-cancelar-local').addEventListener('click', () => {
+    painelConfirmacao.classList.add('oculta');
+    if (pinoRegistro) map.removeLayer(pinoRegistro);
+    pinoRegistro = null;
+});
+
 carregarOcorrencias();

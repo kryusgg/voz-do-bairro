@@ -4,16 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voz do Bairro - Itajaí</title>
-    
-    <!-- Importando o CSS do Leaflet (Mapa) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- estilo customizado -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
-    <!-- Cabeçalho -->
+
+    <!-- Topbar -->
     <header class="topbar">
         <div class="logo">
             <h1>Voz do Bairro</h1>
@@ -22,7 +18,7 @@
         <button id="btn-novo-alerta" class="btn-primary">+ Registrar Problema</button>
     </header>
 
-    <!-- Filtro de Categoria -->
+    <!-- Filtros por Categoria -->
     <nav class="filtros">
         <button class="btn-filtro active" data-categoria="todos">Todos</button>
         <button class="btn-filtro" data-categoria="iluminacao">💡 Iluminação</button>
@@ -30,14 +26,23 @@
         <button class="btn-filtro" data-categoria="saneamento">🗑️ Saneamento</button>
     </nav>
 
-    <!-- Container onde o mapa será renderizado -->
+    <!-- Mapa Ocupando a Tela Inteira -->
     <main id="mapa-container"></main>
 
-    <!-- Modal para registrar nova ocorrência (escondido por padrão) -->
+    <!-- PAINEL FLUTUANTE DE CONFIRMAÇÃO DO PINO (Oculto por padrão) -->
+    <div id="painel-confirmacao" class="oculta" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 2000; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; border: 2px solid #006039; width: 90%; max-width: 400px;">
+        <p style="margin-bottom: 15px; font-weight: bold; color: #333; font-size: 1.05rem;">📍 Arraste o pino para o local exato!</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button id="btn-cancelar-local" style="background: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 50%;">Cancelar</button>
+            <button id="btn-confirmar-local" style="background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 50%;">✅ Confirmar</button>
+        </div>
+    </div>
+
+    <!-- Modal para Registro de Texto -->
     <div id="modal-registro" class="modal oculta">
         <div class="modal-content">
             <h2>Novo Registro</h2>
-            <p class="instrucao">Clique no mapa para marcar o local exato do problema.</p>
+            <p class="instrucao">Preencha os dados básicos do problema.</p>
             
             <form id="form-ocorrencia">
                 <label>Categoria:</label>
@@ -55,20 +60,18 @@
                 <input type="text" id="numero" placeholder="Ex: 350" required>
 
                 <label>Descrição breve:</label>
-                <textarea id="descricao" rows="3" placeholder="Ex: Buraco grande próximo à faixa de pedestres..." required></textarea>
+                <textarea id="descricao" rows="3" placeholder="Ex: Buraco grande..." required></textarea>
                 
                 <div class="acoes-form">
                     <button type="button" id="btn-cancelar" class="btn-secundary">Cancelar</button>
-                    <button type="submit" id="btn-salvar" class="btn-primary">Publicar Alerta</button>
+                    <!-- O botão agora diz Avançar em vez de Salvar -->
+                    <button type="submit" id="btn-salvar" class="btn-primary">Avançar para o Mapa 🗺️</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Importando o Leaflet (Mapa) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!--  script principal com lógica integrada -->
     <script type="module" src="script.js"></script>
 </body>
 </html>
