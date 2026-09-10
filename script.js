@@ -148,26 +148,11 @@ form.addEventListener('submit', async (e) => {
     btnSalvar.disabled = true;
 
     try {
-        const query = encodeURIComponent(`${endereco}, Itajaí, SC, Brasil`);
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
-        const data = await response.json();
+        // PEGA AS COORDENADAS EXATAS DO PINO ARRASTÁVEL!
+        const lat = pinoRegistro.getLatLng().lat;
+        const lng = pinoRegistro.getLatLng().lng;
 
-        let lat = -26.9069;
-        let lng = -48.6617;
-
-        if (data.length > 0) {
-            // Pega a coordenada real da rua
-            let latBase = parseFloat(data[0].lat);
-            let lngBase = parseFloat(data[0].lon);
-            
-            // Cria um micro-desvio aleatório de alguns metros para os pinos não se sobreporem..
-            let desvioLat = (Math.random() - 0.5) * 0.0005;
-            let desvioLng = (Math.random() - 0.5) * 0.0005;
-
-            lat = latBase + desvioLat;
-            lng = lngBase + desvioLng;
-        }
-
+        // Salva direto no Firebase com a precisão visual
         await addDoc(collection(db, "ocorrencias"), {
             categoria: categoria,
             endereco: enderecoCompleto,
@@ -184,6 +169,8 @@ form.addEventListener('submit', async (e) => {
 
         const filtroAtivo = document.querySelector('.btn-filtro.active').getAttribute('data-categoria');
         carregarOcorrencias(filtroAtivo);
+        
+        // Centraliza a tela onde o problema foi salvo
         map.setView([lat, lng], 17);
 
     } catch (error) {
@@ -194,6 +181,5 @@ form.addEventListener('submit', async (e) => {
         btnSalvar.disabled = false;
     }
 });
-
 // Inicializa a aplicação
 carregarOcorrencias();
