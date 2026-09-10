@@ -25,7 +25,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let marcadoresLayer = L.layerGroup().addTo(map);
 let ocorrencias = [];
-
+// Cria um pino especial e arrastável para o usuário marcar o local
+let pinoRegistro = L.marker([-26.9069, -48.6617], { draggable: true }).addTo(map);
+pinoRegistro.bindPopup("📍 <b>Arraste-me</b> para o local exato do problema!").openPopup();
 // ================= Carregar Ocorrências do Firebase =================
 async function carregarOcorrencias(filtro = 'todos') {
     marcadoresLayer.clearLayers();
