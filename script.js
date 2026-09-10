@@ -73,7 +73,6 @@ function desenharMarcadoresNoMapa(filtro) {
             
             marker.bindPopup(popupContent);
             
-            // Adiciona o evento de voto abrindo o popup
             marker.on('popupopen', () => {
                 const btnVotar = document.getElementById(`btn-votar-${oco.id}`);
                 if (btnVotar) {
