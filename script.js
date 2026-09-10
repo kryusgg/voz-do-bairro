@@ -1,29 +1,43 @@
+// Importações diretas do Firebase SDK via CDN oficial
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Configuração do seu Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyDscqk9uFIFZ-9Z27Ci0pxoifLD8Gj5h3c",
+    authDomain: "voz-do-bairro-58727.firebaseapp.com",
+    projectId: "voz-do-bairro-58727",
+    storageBucket: "voz-do-bairro-58727.firebasestorage.app",
+    messagingSenderId: "62321635310",
+    appId: "1:62321635310:web:e4a6a91a0da3215d3a28ff"
+};
+
+// Inicializa o Firebase e o Firestore
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 // Inicializa o mapa focado na região central de Itajaí
 const map = L.map('mapa-container').setView([-26.9069, -48.6617], 14);
 
-// Carrega as imagens do mapa aberto (OpenStreetMap)
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
-// Camada onde os pinos ficam guardados
 let marcadoresLayer = L.layerGroup().addTo(map);
-
-// Array local para guardar as ocorrências buscadas do Firebase
 let ocorrencias = [];
 
-// ================= Função para Buscar Ocorrências do Firebase =================
+// ================= Carregar Ocorrências do Firebase =================
 async function carregarOcorrencias(filtro = 'todos') {
     marcadoresLayer.clearLayers();
     ocorrencias = [];
 
     try {
-        const querySnapshot = await window.getDocs(window.collection(window.db, "ocorrencias"));
+        const querySnapshot = await getDocs(collection(db, "ocorrencias"));
         
         querySnapshot.forEach((docSnap) => {
             const data = docSnap.data();
             ocorrencias.push({
-                id: docSnap.id, // ID real gerado pelo Firestore
+                id: docSnap.id,
                 lat: data.lat,
                 lng: data.lng,
                 categoria: data.categoria,
@@ -33,11 +47,9 @@ async function carregarOcorrencias(filtro = 'todos') {
             });
         });
 
-        // Desenha os pontos no mapa com base no filtro atual
         desenharMarcadoresNoMapa(filtro);
-
     } catch (error) {
-        console.error("Erro ao carregar ocorrências do banco:", error);
+        console.error("Erro ao carregar ocorrências:", error);
     }
 }
 
@@ -55,26 +67,33 @@ function desenharMarcadoresNoMapa(filtro) {
                     <p><strong>Local:</strong> ${oco.endereco}</p>
                     <p>${oco.desc}</p>
                     <p><strong>Apoios da vizinhança: <span id="contador-${oco.id}">${oco.apoios}</span></strong></p>
-                    <button class="btn-apoio" onclick="adicionarApoio('${oco.id}')">👍 Apoiar (+1)</button>
+                    <button class="btn-apoio" id="btn-votar-${oco.id}">👍 Apoiar (+1)</button>
                 </div>
             `;
             
             marker.bindPopup(popupContent);
+            
+            // Adiciona o evento de voto abrindo o popup
+            marker.on('popupopen', () => {
+                const btnVotar = document.getElementById(`btn-votar-${oco.id}`);
+                if (btnVotar) {
+                    btnVotar.onclick = () => adicionarApoio(oco.id);
+                }
+            });
+
             marcadoresLayer.addLayer(marker);
         }
     });
 }
 
-// ================= Sistema de Votos (+1 Apoio) no Firebase =================
-window.adicionarApoio = async function(id) {
+// ================= Sistema de Votos (+1 Apoio) =================
+async function adicionarApoio(id) {
     try {
-        const docRef = window.doc(window.db, "ocorrencias", id);
-        // Incrementa 1 no banco de dados em tempo real
-        await window.updateDoc(docRef, {
-            apoios: window.increment(1)
+        const docRef = doc(db, "ocorrencias", id);
+        await updateDoc(docRef, {
+            apoios: increment(1)
         });
 
-        // Atualiza na tela do usuário instantaneamente
         const ocorrencia = ocorrencias.find(o => o.id === id);
         if (ocorrencia) {
             ocorrencia.apoios += 1;
@@ -85,24 +104,22 @@ window.adicionarApoio = async function(id) {
         }
     } catch (error) {
         console.error("Erro ao registrar apoio:", error);
-        alert("Não foi possível registrar o apoio no momento.");
+        alert("Erro ao registrar apoio.");
     }
-};
+}
 
-// ================= Lógica dos Filtros (Botões Superiores) =================
+// ================= Filtros =================
 const botoesFiltro = document.querySelectorAll('.btn-filtro');
-
 botoesFiltro.forEach(botao => {
     botao.addEventListener('click', (e) => {
         botoesFiltro.forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
-        
         const categoriaEscolhida = e.target.getAttribute('data-categoria');
         desenharMarcadoresNoMapa(categoriaEscolhida);
     });
 });
 
-// ================= Lógica do Formulário e Geolocalização =================
+// ================= Formulário =================
 const modal = document.getElementById('modal-registro');
 const btnNovo = document.getElementById('btn-novo-alerta');
 const btnCancelar = document.getElementById('btn-cancelar');
@@ -114,7 +131,6 @@ btnCancelar.addEventListener('click', () => {
     form.reset();
 });
 
-// Envio do formulário salvando direto no Firebase
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -122,21 +138,20 @@ form.addEventListener('submit', async (e) => {
     const endereco = document.getElementById('endereco').value;
     const numero = document.getElementById('numero').value;
     const descricao = document.getElementById('descricao').value;
-    
     const enderecoCompleto = `${endereco}, ${numero}`;
+    
     const btnSalvar = document.getElementById('btn-salvar');
     const textoOriginal = btnSalvar.innerText;
     
-    btnSalvar.innerText = "Salvando no Banco...";
+    btnSalvar.innerText = "Salvando na Nuvem...";
     btnSalvar.disabled = true;
 
     try {
-        // Busca as coordenadas exatas na API Nominatim
         const query = encodeURIComponent(`${endereco}, ${numero}, Itajaí, SC, Brasil`);
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
         const data = await response.json();
 
-        let lat = -26.9069; // Padrão centro de Itajaí se falhar
+        let lat = -26.9069;
         let lng = -48.6617;
 
         if (data.length > 0) {
@@ -144,8 +159,7 @@ form.addEventListener('submit', async (e) => {
             lng = parseFloat(data[0].lon);
         }
 
-        // Salva o novo registro permanentemente no Firestore
-        await window.addDoc(window.collection(window.db, "ocorrencias"), {
+        await addDoc(collection(db, "ocorrencias"), {
             categoria: categoria,
             endereco: enderecoCompleto,
             desc: descricao,
@@ -157,21 +171,20 @@ form.addEventListener('submit', async (e) => {
 
         modal.classList.add('oculta');
         form.reset();
-        alert('Alerta publicado com sucesso na nuvem!');
+        alert('Alerta publicado com sucesso!');
 
-        // Recarrega os pontos do mapa para exibir o novo alarme
         const filtroAtivo = document.querySelector('.btn-filtro.active').getAttribute('data-categoria');
         carregarOcorrencias(filtroAtivo);
         map.setView([lat, lng], 17);
 
     } catch (error) {
-        console.error("Erro ao salvar ocorrência:", error);
-        alert('Erro ao salvar os dados. Verifique a conexão.');
+        console.error("Erro ao salvar:", error);
+        alert('Erro ao salvar no banco.');
     } finally {
         btnSalvar.innerText = textoOriginal;
         btnSalvar.disabled = false;
     }
 });
 
-// Inicializa a aplicação carregando os dados do banco
+// Inicializa a aplicação
 carregarOcorrencias();
