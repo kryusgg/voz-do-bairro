@@ -59,7 +59,7 @@ function desenharMarcadoresNoMapa(filtro) {
     ocorrencias.forEach(oco => {
         if (filtro === 'todos' || oco.categoria === filtro) {
             
-            // Jitter (Desvio) para evitar sobreposição exata de pinos resolvidos na mesma rua
+            // (Desvio) para evitar sobreposição exata de pinos resolvidos na mesma rua
             let latComDesvio = oco.lat + ((Math.random() - 0.5) * 0.0001);
             let lngComDesvio = oco.lng + ((Math.random() - 0.5) * 0.0001);
 
@@ -127,7 +127,7 @@ btnCancelar.addEventListener('click', () => {
     form.reset();
 });
 
-// PASSO 1: Submeter o Formulário, buscar a rua e mostrar o pino arrastável
+//  Submeter o Formulário, buscar a rua e mostrar o pino arrastável
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -183,7 +183,7 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
-// PASSO 2: Confirmar Local Exato e Salvar no Firebase
+// Confirmar Local Exato e Salvar no Firebase
 document.getElementById('btn-confirmar-local').addEventListener('click', async () => {
     const btnConfirma = document.getElementById('btn-confirmar-local');
     btnConfirma.innerText = "Salvando na Nuvem...";
