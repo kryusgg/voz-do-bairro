@@ -146,7 +146,7 @@ form.addEventListener('submit', async (e) => {
     btnSalvar.disabled = true;
 
     try {
-        const query = encodeURIComponent(`${endereco}, ${numero}, Itajaí, SC, Brasil`);
+        const query = encodeURIComponent(`${endereco}, Itajaí, SC, Brasil`);
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
         const data = await response.json();
 
