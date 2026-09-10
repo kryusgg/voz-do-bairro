@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Configuração do seu Firebase
+// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyDscqk9uFIFZ-9Z27Ci0pxoifLD8Gj5h3c",
     authDomain: "voz-do-bairro-58727.firebaseapp.com",
