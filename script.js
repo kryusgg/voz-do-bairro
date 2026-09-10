@@ -154,8 +154,16 @@ form.addEventListener('submit', async (e) => {
         let lng = -48.6617;
 
         if (data.length > 0) {
-            lat = parseFloat(data[0].lat);
-            lng = parseFloat(data[0].lon);
+            // Pega a coordenada real da rua
+            let latBase = parseFloat(data[0].lat);
+            let lngBase = parseFloat(data[0].lon);
+            
+            // Cria um micro-desvio aleatório de alguns metros para os pinos não se sobreporem..
+            let desvioLat = (Math.random() - 0.5) * 0.0005;
+            let desvioLng = (Math.random() - 0.5) * 0.0005;
+
+            lat = latBase + desvioLat;
+            lng = lngBase + desvioLng;
         }
 
         await addDoc(collection(db, "ocorrencias"), {
